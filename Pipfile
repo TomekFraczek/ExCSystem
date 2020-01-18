@@ -4,9 +4,10 @@ verify_ssl = true
 url = "https://pypi.org/simple"
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"
 
 [packages]
+psycopg2-binary = "==2.8.4"
 django-phonenumber-field = "==3.0.1"
 phonenumbers = "==8.11.1"
 names = "==0.3.0"
@@ -20,7 +21,6 @@ selenium = "==3.141.0"
 sqlparse = "*"
 gunicorn = "*"
 django-heroku = "*"
-psycopg2-binary = "==2.8.4"
 pyyaml = "*"
 ua-parser = "*"
 user-agents = "*"
@@ -32,3 +32,4 @@ django-minio-storage = "*"
 mypy = "==0.761"
 coverage = "*"
 pre-commit = "==1.21.0"
+django-extensions = "*"
