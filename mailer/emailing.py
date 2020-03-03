@@ -44,7 +44,7 @@ def send_email(ready_email, to_emails, from_email=None, host_email=None, smtp_pa
 
 def send_membership_email(to_emails, title, body, receiver_names=None):
     """Send an email from the club membership email. See send_email for more details"""
-    from_name = 'CCUW Membership'
+    from_name = 'Membership | CCUW'
     recipients = format_recipients(to_emails, receiver_names)
     ready_email = pretty_format_email(
         from_name,

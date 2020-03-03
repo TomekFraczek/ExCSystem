@@ -3,10 +3,8 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     Group,
-    Permission,
     PermissionsMixin,
 )
-from django.core.mail import send_mail
 from django.db import models
 from django.urls import reverse
 from django.utils.timezone import datetime, now, timedelta
@@ -16,7 +14,7 @@ from core.convinience import get_email_template
 
 from .CertificationModels import Certification
 from .fields.RFIDField import RFIDField
-from core import emailing
+from mailer import emailing
 
 
 def get_profile_pic_upload_location(instance, filename):
@@ -240,16 +238,19 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
         return self
 
-    def send_email(self, title, body, from_email, email_host_password):
+    def send_email(self, title, body, from_email, from_name):
         """Sends an email to the member"""
-        emailing.send_email(
-            [self.email],
+        email = emailing.pretty_format_email(
+            from_name,
+            from_email,
+            emailing.format_recipients(self.email, self.get_full_name()),
             title,
-            body,
-            from_email=from_email,
-            smtp_password=email_host_password,
-            from_name='Excursion Club',
-            receiver_names=[self.get_full_name()]
+            body
+        )
+        emailing.send_email(
+            email,
+            self.email,
+            from_email=from_email
         )
 
     def send_membership_email(self, title, body):
@@ -293,8 +294,8 @@ class Member(AbstractBaseUser, PermissionsMixin):
         self.send_email(
             title,
             body,
-            'info@excursionclubucsb.org',
-            settings.MEMBERSHIP_EMAIL_HOST_PASSWORD,
+            'gear@climbingclubuw.org',
+            'Gear Manager | CCUW'
         )
 
     def send_new_staff_email(self, staffer):
