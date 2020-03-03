@@ -461,4 +461,4 @@ class StafferChangeForm(forms.ModelForm):
 
     class Meta:
         model = Staffer
-        fields = ('member', 'is_active', 'nickname', 'exc_email', 'title', 'favorite_trips', 'autobiography')
+        fields = ('member', 'is_active', 'nickname', 'club_email', 'title', 'favorite_trips', 'autobiography')

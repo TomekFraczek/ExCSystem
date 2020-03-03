@@ -1,4 +1,5 @@
 import smtplib
+import requests
 from uwccsystem import settings
 
 
@@ -59,5 +60,18 @@ def send_membership_email(to_emails, title, body, receiver_names=None):
         host_email=settings.MEMBERSHIP_EMAIL_HOST_PASSWORD,
         smtp_password=settings.MEMBERSHIP_EMAIL_HOST_PASSWORD,
     )
+
+
+def create_staffer_forward(club_email, full_name, forward_email):
+
+    route_data = {
+        'description': f'Email forwarding for Staffer: {full_name}',
+        'match': f"match_recipient('{club_email}')",
+        'action': f"forward('{forward_email}')",
+    }
+
+    url = f'{settings.API_BASE}/routes'
+    response = requests.post(url, auth=('api', settings.MAILGUN_API_KEY), data=route_data)
+    return response
 
 

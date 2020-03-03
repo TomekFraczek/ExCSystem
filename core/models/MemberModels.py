@@ -88,18 +88,21 @@ class StafferManager(models.Manager):
         :param autobiography: the staffers life story
         :return: Staffer
         """
-        exc_email = f"{staff_name}{settings.EXC_EMAIL}"
+        club_email = f"{staff_name}{settings.EXC_EMAIL}"
         member.move_to_group("Staff")
         member.date_expires = datetime.max
         member.save()
 
-        staffer = self.model(member=member, exc_email=exc_email, nickname=staff_name)
+        staffer = self.model(member=member, club_email=club_email, nickname=staff_name)
         staffer.is_active = True
         if autobiography:
             staffer.autobiography = None
         staffer.save()
 
         member.send_new_staff_email(staffer)
+
+        resposne = emailing.create_staffer_forward(club_email, member.get_full_name())
+
         return staffer
 
 
@@ -346,7 +349,7 @@ class Staffer(models.Model):
         blank=True,
         null=True,
         help_text="List of your favorite trips, one per line")
-    exc_email = models.EmailField(
+    club_email = models.EmailField(
         verbose_name='Official Club Email',
         max_length=255,
         unique=True)
