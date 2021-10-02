@@ -4,7 +4,7 @@ Please log on to the member portal and fill out your staffer profile.
 {finish_url}
 
 You are now one of our staffers, in charge of leading trips and keeping up the stoke. We're glad to have you!
-Your new excursion email is {staffer_email}
+Your new uwcc email is {staffer_email}
 
 Stay Stoked,
 Your friendly Climbing Club Robot

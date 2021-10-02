@@ -44,7 +44,7 @@ def expire_members():
 def expire_gear():
     """"""
     checked_out = Gear.objects.filter(status__in=[1, 3])
-    sys_rfid = Member.objects.get(email='system@excursionclubucsb.org').rfid
+    sys_rfid = Member.objects.get(email='UWCCSystem@climbingclubuw.org').rfid
     today = date.today()
     for gear in checked_out:
         if gear.status == 1 and today > gear.due_date:
