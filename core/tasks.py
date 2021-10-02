@@ -5,7 +5,7 @@ from sys import argv
 from django.utils.timezone import datetime, timedelta
 from datetime import date
 
-from excsystem.settings import GEAR_EXPIRE_TIME
+from uwccsystem.settings import GEAR_EXPIRE_TIME
 from core.models.MemberModels import Member
 from core.models.GearModels import Gear
 from core.models.TransactionModels import Transaction

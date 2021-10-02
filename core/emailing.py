@@ -14,13 +14,13 @@ def send_email(to_emails, title, body,
 
     # Prepare the list of recipients, optionally including names
     if receiver_names is None:
-        recipients = ", ".join([f'<{email}>' for email in to_emails])
+        recipients = [{'email': mail} for mail in to_emails]
     else:
-        recipients = ", ".join([f'{receiver[0]} <{receiver[1]}>' for receiver in zip(receiver_names, to_emails)])
+        recipients = [{'email': mail, 'name': name} for name, mail in zip(receiver_names, to_emails)]
 
     email = {
         "to": recipients,
-        "reply_to": from_email,
+        "reply_to": {'email': from_email},
         "sender": {
             "name": from_name,
             "email": from_email
