@@ -1,13 +1,15 @@
 from functools import update_wrapper
 
 from core.admin.ViewableAdmin import ViewableModelAdmin
-from core.forms.MemberForms import MemberChangeForm, MemberCreationForm
+from core.forms.MemberForms import MemberChangeForm, MemberCreationForm, StafferCreateForm, StafferChangeForm
 from core.views.MemberViews import (
     MemberDetailView,
     MemberFinishView,
     MemberListView,
     StafferDetailView,
+    ResendIntroEmailView
 )
+from core.models.MemberModels import Member
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
@@ -38,13 +40,22 @@ class MemberAdmin(ViewableModelAdmin, BaseUserAdmin):
             None,
             {"classes": ("wide",), "fields": ("username", "password1", "password2")},
         ),
-        ("Staff Use Only", {"classes": ("wide",), "fields": ("membership", "rfid")}),
+        ("Staff Use Only", {"classes": ("wide",), "fields": ("form_filled", "membership", "rfid")}),
     )
     fieldsets = (
-        ("Contact Info", {"classes": ("wide",), "fields": ("email", "phone_number")}),
+        (
+            "Contact Info",
+            {"classes": ("wide",), "fields": ("email", "phone_number")}),
         (
             "Personal Info",
             {"classes": ("wide",), "fields": ("first_name", "last_name", "image")},
+        ),
+        (
+            "Emergency Contact Info",
+            {
+                "classes": ("wide",),
+                "fields": ("emergency_contact_name", "emergency_relation", "emergency_phone", "emergency_email")
+            }
         ),
         (
             "Club  Info",
@@ -56,8 +67,13 @@ class MemberAdmin(ViewableModelAdmin, BaseUserAdmin):
             "Profile Info",
             {
                 "classes": ("wide",),
-                "fields": ("email", "phone_number", "first_name", "last_name"),
+                "fields": ("email", "phone_number", "first_name", "last_name", "image"),
             },
+            "Emergency Contact Info",
+            {
+                "classes": ("wide",),
+                "fields": ("emergency_contact_name", "emergency_relation", "emergency_phone", "emergency_email")
+            }
         ),
     )
     search_fields = ("email", "phone_number", "first_name", "last_name", "rfid")
@@ -72,12 +88,17 @@ class MemberAdmin(ViewableModelAdmin, BaseUserAdmin):
         # Get all the urls automatically generated for a admin view of a model by django
         urls = super().get_urls()
 
-        # Setup all the additional member finish url
+        # Setup all the additional member urls
         my_urls = [
             path(
                 "<int:pk>/finish/",
                 self.wrap(MemberFinishView.as_view()),
                 name="core_member_finish",
+            ),
+            path(
+                "<int:pk>/email/",
+                self.wrap(ResendIntroEmailView.as_view()),
+                name="core_member_resendemail",
             )
         ]
 
@@ -159,6 +180,46 @@ class MemberAdmin(ViewableModelAdmin, BaseUserAdmin):
 
         return fieldsets
 
+    def get_readonly_fields(self, request, obj=None):
+        """Make it so only those who can make staffers be able to change a member's group"""
+        if not request.user.has_permission('core.add_staffer'):
+            return ('groups', )
+        else:
+            return ()
+
 
 class StafferAdmin(ViewableModelAdmin):
     detail_view_class = StafferDetailView
+
+    form = StafferChangeForm
+    add_form = StafferCreateForm
+
+    ordering = ('-is_active',)
+    staffer_readonly = ('member', 'nickname', 'exc_email', 'title', 'is_active')
+    search_fields = ('nickname', 'member__first_name', 'member__last_name', 'title', 'exc_email')
+    list_display = ('nickname', 'full_name', 'title', 'exc_email', 'is_active')
+
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Use special form during user creation
+        """
+        defaults = {}
+        if obj is None:
+            defaults['form'] = self.add_form
+        defaults.update(kwargs)
+        return super().get_form(request, obj, **defaults)
+
+    def get_readonly_fields(self, request, obj=None):
+        if not request.user.has_permission('core.change_staffer'):
+            return self.staffer_readonly
+        else:
+            return ()
+
+    def has_change_permission(self, request, obj=None):
+        can_change = request.user.has_permission('core.change_staffer')
+        is_self = obj is not None and request.user.primary_key == obj.member.primary_key
+        return is_self or can_change
+
+    def delete_model(self, request, obj):
+        obj.member.promote_to_active()  # Automatically demote to a regular member (this will update perms)
+        super(StafferAdmin, self).delete_model(request, obj)

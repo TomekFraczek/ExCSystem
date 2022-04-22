@@ -3,13 +3,14 @@ import json
 
 from core.convinience import get_all_rfids
 from core.forms.fields.RFIDField import RFIDField
+from core.forms.widgets import ExCEmailWidget
 from core.models import Member, Staffer
 from core.models.QuizModels import Question
 from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.urls import reverse
 from django.utils.timezone import timedelta
-from excsystem.settings import WEB_BASE
+from uwccsystem.settings import WEB_BASE, DEFAULT_IMG, CLUB_EMAIL
 from phonenumber_field.formfields import PhoneNumberField
 from phonenumber_field.widgets import PhoneNumberPrefixWidget
 
@@ -26,16 +27,16 @@ class MemberCreationForm(forms.ModelForm):
 
     # TODO: Make these either editable in the admin or be sourced externally
     membership_choices = (
-        ("year_new", "$60 - Full Year New"),
-        ("year_return", "$40 - Full Year Returning"),
-        ("quarter_new", "$30 - One Quarter New"),
-        ("quarter_return", "$20 - One Quarter Returning"),
+        ("year_new", "$40 - Full Year New"),
+        ("year_return", "$30 - Full Year Returning"),
+        ("quarter_new", "$20 - One Quarter New"),
+        ("quarter_return", "$15 - One Quarter Returning"),
     )
 
     username = forms.EmailField(label="Email")
     rfid = RFIDField(
         label="RFID",
-        help_text="If you're renewing, this will replace your current rfid tag",
+        help_text="&nbsp &nbsp &nbsp If you're renewing, this will replace your current rfid tag",
         required=False,
     )
     password1 = forms.CharField(
@@ -53,6 +54,7 @@ class MemberCreationForm(forms.ModelForm):
     membership = forms.ChoiceField(
         label="Membership Payment", choices=membership_choices
     )
+    form_filled = forms.BooleanField(label="Liability form Signed", initial=False, required=True)
 
     membership_duration = 0
     referenced_member = None
@@ -75,7 +77,7 @@ class MemberCreationForm(forms.ModelForm):
         rfid = self.cleaned_data["rfid"]
 
         if rfid in get_all_rfids():
-            raise forms.ValidationError("This RFID is already in use!")
+            raise forms.ValidationError(f"The RFID '{rfid}' is already in use!")
 
         # If a member is renewing, the RFID can either be a new rfid, or empty
         if self.referenced_member and not (len(rfid) == 0 or len(rfid) == 10):
@@ -83,7 +85,7 @@ class MemberCreationForm(forms.ModelForm):
 
         # If a member is not renewing, then rfid must be present
         if not self.referenced_member and len(rfid) != 10:
-            raise forms.ValidationError("This is not a valid 10 digit RFID!")
+            raise forms.ValidationError(f"'{rfid}' is not a valid 10 digit RFID!")
 
         return rfid
 
@@ -172,6 +174,7 @@ class MemberFinishForm(forms.ModelForm):
     """
 
     member_field_names = ["first_name", "last_name", "phone_number", "image"]
+    emergency_field_names = ["emergency_contact_name", "emergency_relation", "emergency_phone", "emergency_email"]
 
     # Instantiate the non-default member data fields
     phone_number = PhoneNumberField(widget=PhoneNumberPrefixWidget)
@@ -206,11 +209,24 @@ class MemberFinishForm(forms.ModelForm):
     # This meta class allows the django backend to link this for to the model
     class Meta:
         model = Member
-        fields = ("first_name", "last_name", "phone_number", "image")
+        fields = (
+            "first_name",
+            "last_name",
+            "phone_number",
+            "image",
+            "emergency_contact_name",
+            "emergency_relation",
+            "emergency_phone",
+            "emergency_email"
+        )
 
     def as_table_member(self):
         """Make it possible to get the HTML of just the member information section of this form"""
         return self.as_table_subset(self.member_field_names)
+
+    def as_table_emergency(self):
+        """Make it possible to get the HTML of just the emergency contact information section of this form"""
+        return self.as_table_subset(self.emergency_field_names)
 
     def as_table_quiz(self):
         """Make it possible to get the HTML of just the quiz information section of this form"""
@@ -224,11 +240,20 @@ class MemberFinishForm(forms.ModelForm):
         try:
             self.fields = self.get_fields_subset(subset_field_names)
             html = self._html_output(
-                normal_row="<tr%(html_class_attr)s><th>%(label)s</th><td>%(errors)s%(field)s%(help_text)s</td></tr>",
-                error_row='<tr><td colspan="2"><font color="red">%s</font></td></tr>',
+                normal_row='<tr%(html_class_attr)s>'
+                           '<th>%(label)s</th>'
+                           '<td style"width:20px">&nbsp&nbsp</td>'
+                           '<td>%(field)s%(help_text)s</td>'
+                           '</tr>',
+                error_row='<tr>'
+                          '<td colspan="3" style="height:40px">&nbsp</td>'
+                          '</tr>'
+                          '<tr>'
+                          '<td colspan="3" style="color:red">%s</td>'
+                          '</tr>',
                 row_ender="</td></tr>",
                 help_text_html='<br /><span class="helptext">%s</span>',
-                errors_on_separate_row=False,
+                errors_on_separate_row=True,
             )
         finally:
             self.fields = original_fields
@@ -258,6 +283,8 @@ class MemberFinishForm(forms.ModelForm):
         """Ensures that the image is of a sufficiently small size before it gets uploaded"""
         image = self.cleaned_data["image"]
 
+        if not image or image.name == DEFAULT_IMG:
+            raise forms.ValidationError("Please upload your own profile picture!")
         if not hasattr(image, "size"):
             raise forms.ValidationError("Please upload a profile picture!")
         if image.size > self.max_image_bytes:
@@ -344,7 +371,7 @@ class MemberChangeGroupsForm(forms.ModelForm):
         fields = ("groups",)
 
 
-class StafferDataForm(forms.ModelForm):
+class StafferCreateForm(forms.ModelForm):
     """
     Form to request the additional information required when becoming a staffer.
 
@@ -356,23 +383,39 @@ class StafferDataForm(forms.ModelForm):
     and templates may not be present.
     """
 
-    exc_email = forms.CharField(
-        label="Staffer Nickname",
+    member = forms.ModelChoiceField(Member.objects.all())
+    nickname = forms.CharField(
+        label="Nickname",
         max_length=20,
         help_text="The name of the staffer: to be used as the beginning of the email address",
+        widget=ExCEmailWidget()
     )
 
     class Meta:
         model = Staffer
         # Member should already be known when this form is accessed, so having it as a field is excessive
-        fields = ("exc_email", "autobiography")
+        fields = ("member", "nickname", "title",)
+        exclude = ("autobiography", 'is_active')
 
-    def clean_exc_email(self):
+    def __init__(self, *args, **kwargs):
+        super(StafferCreateForm, self).__init__(*args, **kwargs)
+
+    def clean_nickname(self):
         """
         Although the field is named exc_email, the input should only be the staff name, so append rest of email here
         """
-        staff_name = self.cleaned_data["exc_email"]
-        return staff_name + "@excursionclubucsb.org"
+        staff_name = self.cleaned_data["nickname"]
+        return staff_name
+
+    def save(self, commit=True):
+        # We will always commit the save, so make sure m2m fields are always saved
+        self.save_m2m = self._save_m2m
+
+        member = self.cleaned_data['member']
+        nickname = self.cleaned_data['nickname']
+
+        staffer = Staffer.objects.upgrade_to_staffer(member, nickname)
+        return staffer
 
 
 class MemberChangeForm(forms.ModelForm):
@@ -409,5 +452,13 @@ class MemberChangeForm(forms.ModelForm):
         return groups
 
     def save(self, commit=True):
-        self.instance.move_to_group(self.cleaned_data["group"])
+        if 'group' in self.cleaned_data:
+            self.instance.move_to_group(self.cleaned_data["group"])
         return super(MemberChangeForm, self).save(commit=commit)
+
+
+class StafferChangeForm(forms.ModelForm):
+
+    class Meta:
+        model = Staffer
+        fields = ('member', 'is_active', 'nickname', 'exc_email', 'title', 'favorite_trips', 'autobiography')

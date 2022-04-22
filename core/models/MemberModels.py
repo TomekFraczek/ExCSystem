@@ -1,5 +1,3 @@
-import os
-
 from core.models.fields.PrimaryKeyField import PrimaryKeyField
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -12,11 +10,13 @@ from django.core.mail import send_mail
 from django.db import models
 from django.urls import reverse
 from django.utils.timezone import datetime, now, timedelta
-from excsystem import settings
+from uwccsystem import settings
 from phonenumber_field.modelfields import PhoneNumberField
+from core.convinience import get_email_template
 
 from .CertificationModels import Certification
 from .fields.RFIDField import RFIDField
+from core import emailing
 
 
 def get_profile_pic_upload_location(instance, filename):
@@ -71,7 +71,7 @@ class MemberManager(BaseUserManager):
         superuser.is_admin = True
         superuser.first_name = "Master"
         superuser.last_name = "Admin"
-        superuser.phone_number = "+15555555555"
+        superuser.phone_number = "808-555-0125"
         superuser.certifications.set(Certification.objects.all())
         superuser.save(using=self._db)
 
@@ -90,17 +90,18 @@ class StafferManager(models.Manager):
         :param autobiography: the staffers life story
         :return: Staffer
         """
-        exc_email = f"{staff_name}@excursionclubucsb.org"
+        exc_email = f"{staff_name}{settings.CLUB_EMAIL}"
         member.move_to_group("Staff")
         member.date_expires = datetime.max
         member.save()
-        if autobiography is not None:
-            staffer = self.model(
-                member=member, exc_email=exc_email, autobiography=autobiography
-            )
-        else:
-            staffer = self.model(member=member, exc_email=exc_email)
+
+        staffer = self.model(member=member, exc_email=exc_email, nickname=staff_name)
+        staffer.is_active = True
+        if autobiography:
+            staffer.autobiography = None
         staffer.save()
+
+        member.send_new_staff_email(staffer)
         return staffer
 
 
@@ -108,32 +109,39 @@ class Member(AbstractBaseUser, PermissionsMixin):
     """This is the base model for all members (this includes staffers)"""
 
     objects = MemberManager()
-
     primary_key = PrimaryKeyField()
 
+    # Personal contact information
     first_name = models.CharField(max_length=50, null=True)
     last_name = models.CharField(max_length=50, null=True)
     email = models.EmailField(verbose_name="email address", max_length=255, unique=True)
-    rfid = RFIDField(verbose_name="RFID")
     image = models.ImageField(
         verbose_name="Profile Picture",
-        default="shaka.webp",
+        default=settings.DEFAULT_IMG,
         upload_to=get_profile_pic_upload_location,
         blank=True,
+        null=True,
     )
     phone_number = PhoneNumberField(unique=False, null=True)
 
+    # Emergency contact information
+    emergency_contact_name = models.CharField(max_length=100, verbose_name="Contact Name", null=True)
+    emergency_relation = models.CharField(max_length=50, verbose_name="Relationship", null=True)
+    emergency_phone = PhoneNumberField(unique=False, verbose_name="Phone Number", null=True)
+    emergency_email = models.EmailField(unique=False, verbose_name="Best Email", null=True)
+
+    # Membership data
     date_joined = models.DateField(auto_now_add=True)
     date_expires = models.DateField(null=False)
-
-    is_admin = models.BooleanField(default=False)
+    rfid = RFIDField(verbose_name="RFID")
     group = models.CharField(default="Unset", max_length=30)
+    is_admin = models.BooleanField(default=False)
+    certifications = models.ManyToManyField(Certification, blank=True)
 
     #: This is used by django to determine if users are allowed to login. Leave it, except when banishing someone
     is_active = models.BooleanField(
         default=True
     )  # Use is_active_member to check actual activity
-    certifications = models.ManyToManyField(Certification, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["date_expires"]
@@ -151,12 +159,21 @@ class Member(AbstractBaseUser, PermissionsMixin):
         return True
 
     @property
+    def is_staffer(self):
+        """Property to check if a member is a excursion staffer or not"""
+        return self.group in ['Staff', 'Board', 'Admin']
+
+    @property
     def edit_profile_url(self):
         return reverse("admin:core_member_change", kwargs={"object_id": self.pk})
 
     @property
     def view_profile_url(self):
         return reverse("admin:core_member_detail", kwargs={"pk": self.pk})
+
+    @property
+    def make_staff_url(self):
+        return reverse('admin:core_staffer_add', kwargs={'member': self})
 
     def has_name(self):
         """Check whether the name of this member has been set"""
@@ -201,7 +218,10 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     def promote_to_active(self):
         """Move the member to the group of active members"""
-        self.move_to_group("Member")
+        if self.group == "Staff" or self.group == "Board" or self.group == "Admin":
+            print("Member status is already better than member")
+        else:
+            self.move_to_group("Member")
 
     def extend_membership(self, duration, rfid="", password=""):
         """Add the given amount of time to this member's membership, and optionally update their rfid and password"""
@@ -221,49 +241,69 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
         return self
 
-    def send_email(self, title, body, from_email, email_host_password):
+    def send_email(self, title, body, from_email):
         """Sends an email to the member"""
-        send_mail(
+        emailing.send_email(
+            [self.email],
             title,
             body,
-            from_email,
-            [self.email],
-            fail_silently=False,
-            auth_user=from_email,
-            auth_password=email_host_password,
+            from_email=from_email,
+            from_name='Excursion Club',
+            receiver_names=[self.get_full_name()]
         )
 
     def send_membership_email(self, title, body):
         """Send an email to the member from the membership email"""
-        self.send_email(
+        emailing.send_membership_email(
+            [self.email],
             title,
             body,
-            settings.MEMBERSHIP_EMAIL_HOST_USER,
-            settings.MEMBERSHIP_EMAIL_HOST_PASSWORD,
+            receiver_names=[self.get_full_name()]
         )
 
     def send_intro_email(self, finish_signup_url):
         """Send the introduction email with the link to finish signing up to the member"""
         title = "Finish Signing Up"
-        # get the absolute path equivalent of going up one level and then into the templates directory
-        templates_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), os.pardir, "templates")
-        )
-        template_file = open(os.path.join(templates_dir, "emails", "intro_email.txt"))
-        template = template_file.read()
+        template = get_email_template('intro_email')
         body = template.format(finish_signup_url=finish_signup_url)
         self.send_membership_email(title, body)
 
-    def send_expire_soon_email(self):
+    def send_expires_soon_email(self):
         """Send an email warning the member that their membership will soon expire"""
-        title = "Excursion Club Membership Expiring Soon!"
-        templates_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), os.pardir, "templates")
+        title = "Climbing Club Membership Expiring Soon!"
+        template = get_email_template('expire_soon_email')
+        body = template.format(member_name=self.get_full_name(), expiration_date=self.date_expires)
+        self.send_membership_email(title, body)
+
+    def send_expired_email(self):
+        """Send an email warning the member that their membership will soon expire"""
+        title = "Climbing Club Membership Expired!"
+        template = get_email_template('expired_email')
+        body = template.format(member_name=self.get_full_name(), today=self.date_expires)
+        self.send_membership_email(title, body)
+
+    def send_missing_gear_email(self, all_gear):
+        """Send an email to member that they have gear to return"""
+        gear_rows = []
+        for gear in all_gear:
+            gear_rows.append(f"<tr><td>{gear.name}</td><td>{gear.due_date.strftime('%a, %b %d, %Y')}</td></tr>")
+        template = get_email_template('missing_gear')
+        body = template.format(first_name=self.first_name, gear_rows="".join(gear_rows))
+        title = 'Gear Overdue'
+        self.send_email(
+            title,
+            body,
+            'info@climbingclubuw.org',
         )
-        template_file = open(os.path.join(templates_dir, "emails", "intro_email.txt"))
-        template = template_file.read()
+
+    def send_new_staff_email(self, staffer):
+        """Sen an email welcoming the member to staff"""
+        title = "Welcome to staff!"
+        template = get_email_template('new_staffer')
         body = template.format(
-            member_name=self.get_full_name(), expiration_date=self.date_expires
+            member_name=self.first_name,
+            finish_url=settings.WEB_BASE+staffer.edit_profile_url,
+            staffer_email=staffer.exc_email
         )
         self.send_membership_email(title, body)
 
@@ -292,18 +332,48 @@ class Staffer(models.Model):
 
     objects = StafferManager()
 
-    def __str__(self):
-        """Gives the staffer a string representation of the staffer name"""
-        return self.member.get_full_name()
-
     member = models.OneToOneField(Member, on_delete=models.CASCADE)
+
+    is_active = models.BooleanField(
+        default=False, null=True)
+    nickname = models.CharField(
+        max_length=40,
+        blank=True,
+        null=True)
+    favorite_trips = models.TextField(
+        blank=True,
+        null=True,
+        help_text="List of your favorite trips, one per line")
     exc_email = models.EmailField(
-        verbose_name="Official ExC Email", max_length=255, unique=True
-    )
+        verbose_name='Official Club Email',
+        max_length=255,
+        unique=True)
     title = models.CharField(
-        verbose_name="Position Title", default="Excursion Staff!", max_length=30
-    )
+        verbose_name="Position Title",
+        default="Climbing Club Staff!",
+        max_length=30)
     autobiography = models.TextField(
         verbose_name="Self Description of the staffer",
         default="I am too lazy and lame to upload a bio!",
-    )
+        null=True)
+
+    @property
+    def full_name(self):
+        """Gets the name of the member associated with this staffer"""
+        return self.member.get_full_name()
+
+    def __str__(self):
+        """Gives the staffer a string representation of the staffer name"""
+        return str(self.member)
+
+    @property
+    def fav_trip_list(self):
+        if self.favorite_trips:
+            trips = self.favorite_trips.split("\n")
+        else:
+            trips = ["I'm stoked on all types of things!", ]
+        return trips
+
+    @property
+    def edit_profile_url(self):
+        return reverse("admin:core_staffer_change", kwargs={"object_id": self.pk})

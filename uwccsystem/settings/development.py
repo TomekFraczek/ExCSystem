@@ -1,11 +1,14 @@
-from excsystem.settings.base import *
+from uwccsystem.settings.base import *
 
 DEBUG = True
 
 STATIC_URL = "static/"
 MEDIA_URL = "media/"
 
-INSTALLED_APPS.append("minio_storage")
+INSTALLED_APPS.extend([
+    "minio_storage",
+    "django_extensions"
+])
 MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
 
 DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
@@ -22,6 +25,9 @@ MINIO_STORAGE_STATIC_USE_PRESIGNED = True
 MINIO_STORAGE_MEDIA_USE_PRESIGNED = True
 
 
+CSRF_COOKIE_SECURE=False
+
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -32,7 +38,9 @@ DATABASES = {
 # Email host settings
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1024
-MEMBERSHIP_EMAIL_HOST_USER = "membership@ExCDev.org"
+EMAIL_USE_TLS = False
+MEMBERSHIP_EMAIL_NAME = "UWCC Membership"
+MEMBERSHIP_EMAIL_HOST_USER = "membership@UWCCDev.org"
 MEMBERSHIP_EMAIL_HOST_PASSWORD = ""
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

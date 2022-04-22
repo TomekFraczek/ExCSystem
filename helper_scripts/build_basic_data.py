@@ -9,16 +9,27 @@ from core.models.DepartmentModels import Department
 from core.models.FileModels import AlreadyUploadedImage
 from core.models.QuizModels import Answer, Question
 from django.contrib.sites.models import Site
-from excsystem import settings
+from django.db.utils import IntegrityError
+
+from uwccsystem import settings
 
 
 def build_all():
-    build_site()
-    build_permissions()
-    build_quiz_questions()
-    build_certifications()
-    build_departments()
-    build_images()
+
+    build_funcs = [
+        build_site,
+        build_permissions,
+        build_quiz_questions,
+        build_certifications,
+        build_departments,
+        build_images
+    ]
+    for func in build_funcs:
+        try:
+            func()
+        except IntegrityError as ex:
+            print(f'  Skipping Error: {ex}')
+            pass
 
 
 def build_images():
@@ -27,8 +38,11 @@ def build_images():
     sub_types = ["Fake SubType", "SubType I made up", "More Type", "Something"]
 
     # Build the default common shaka image
-    img = AlreadyUploadedImage.objects.create(image_type="gear", picture="shaka.webp")
-    img.save()
+    try:
+        img = AlreadyUploadedImage.objects.create(image_type="gear", picture=settings.DEFAULT_IMG)
+        img.save()
+    except IntegrityError:
+        print(f'Shaka Image already exists')
 
 
 def build_site():
@@ -61,15 +75,19 @@ def save_question(
         answers.append(ans)
 
     # make the question and relate all the answers
-    question = Question.objects.create(
-        usage="membership",
-        name=question_name,
-        question_text=question_text,
-        correct_answer=answers[correct_answer_index],
-        error_message=error_message,
-    )
-    question.answers.add(*answers)
-    question.save()
+    try:
+        question = Question.objects.create(
+            usage="membership",
+            name=question_name,
+            question_text=question_text,
+            correct_answer=answers[correct_answer_index],
+            error_message=error_message,
+        )
+        question.answers.add(*answers)
+        question.save()
+    except IntegrityError as ex:
+        print(f'Question {question_name} already exists. Skipping!')
+        pass
 
 
 def build_quiz_questions():
@@ -97,18 +115,6 @@ def build_quiz_questions():
         ),
         correct_answer_index=1,
         error_message="You can only check out one of each type of item!",
-    )
-    save_question(
-        question_name="certification",
-        question_text="How do you get certified for kayaks and SUPS?",
-        choices=(
-            ("class", "Take a $500 class"),
-            ("trip", "Go on a trip with a staffer"),
-            ("date", "Bang a bunch of staffers"),
-            ("nudie", "Run naked around the block"),
-        ),
-        correct_answer_index=1,
-        error_message="To get certified just go on a trip with a staffer.",
     )
     save_question(
         question_name="broken",
@@ -147,32 +153,13 @@ def build_certifications():
     )
     kayak_cert.save()
 
-    sup_cert = Certification(
-        title="Stand Up Paddleboarding",
-        requirements="1) Be able to swim, dammit\n"
-        "2) Have received the safety talk, know about wind and current dangers\n"
-        "3) Be able to take the SUP out into the surf safely\n"
-        "4) Be able to get off of, flip, and get back onto the SUP out in deep water\n"
-        "5) Be able to bring the SUP back in to shore safely\n",
-    )
-    sup_cert.save()
-
 
 def build_departments():
     departments = [
         "Camping",
         "Backpacking",
         "Rock Climbing",
-        "Skiing/Snowboarding",
-        "Kayaking",
-        "Paddleboarding",
-        "Surfing",
-        "Wetsuits",
-        "Mountaineering",
-        "Archery",
-        "Paintballing",
-        "Free Diving",
-        "Off-Road",
+        "Mountaineering"
     ]
 
     for dept in departments:

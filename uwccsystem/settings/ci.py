@@ -1,6 +1,6 @@
-from excsystem.settings.base import *
+from uwccsystem.settings.base import *
 
-DEBUG = True
+DEBUG = bool(os.environ.get("DJANGO_DEBUG", True))
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
@@ -24,7 +24,7 @@ DATABASES = {
 # Email host settings
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1024
-MEMBERSHIP_EMAIL_HOST_USER = "membership@ExCDev.org"
+MEMBERSHIP_EMAIL_HOST_USER = "membership@UWCCDev.org"
 MEMBERSHIP_EMAIL_HOST_PASSWORD = ""
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

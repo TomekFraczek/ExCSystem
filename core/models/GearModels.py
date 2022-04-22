@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 from core.forms.fields.RFIDField import RFIDField
 from core.forms.widgets import ExistingImageWidget
@@ -14,11 +15,12 @@ from django.forms.fields import (
 )
 from django.forms.widgets import CheckboxInput, NumberInput, Select, Textarea, TextInput
 from django.urls import reverse
+from datetime import date
 
 from .CertificationModels import Certification
 from .DepartmentModels import Department
 from .MemberModels import Member
-
+from uwccsystem.settings import GEAR_EXPIRE_TIME
 
 class CustomDataField(models.Model):
     data_types = (
@@ -94,10 +96,10 @@ class CustomDataField(models.Model):
     def serialize_boolean(self, boolean, required=False, **kwargs):
         return {"initial": boolean, "required": required}
 
-    def serialize_int(self, value, min_value=-100, max_value=100, **kwargs):
+    def serialize_int(self, value, min_value=-1000000, max_value=1000000, **kwargs):
         return {"initial": value, "min_value": min_value, "max_value": max_value}
 
-    def serialize_float(self, value, min_value=-1000, max_value=1000, **kwargs):
+    def serialize_float(self, value, min_value=-1000000, max_value=1000000, **kwargs):
         return {"initial": value, "min_value": min_value, "max_value": max_value}
 
     def serialize_choice(self, value, choices=None, **kwargs):
@@ -318,6 +320,14 @@ class Gear(models.Model):
     def edit_gear_url(self):
         return reverse("admin:core_gear_change", kwargs={"object_id": self.pk})
 
+    @property
+    def view_gear_url(self):
+        return reverse("admin:core_gear_detail", kwargs={"pk": self.pk})
+
+    @property
+    def is_overdue(self):
+        return self.due_date < date.today()
+
     def get_extra_fieldset(self, name="Additional Data", classes=("wide",)):
         """Get a fieldset that contains data on how to represent the extra data fields contained in geartype"""
         fieldset = (
@@ -366,10 +376,10 @@ class Gear(models.Model):
 
     def is_available(self):
         """Returns True if the gear is available for renting"""
-        return True if self.status == 0 else False
+        return self.status == 0
 
     def is_rented_out(self):
-        return True if self.status == 1 else False
+        return self.status in [1, 3, 4]
 
     def is_active(self):
         """Returns True if the gear is actively in circulation (ie could be checked out in a few days)"""
