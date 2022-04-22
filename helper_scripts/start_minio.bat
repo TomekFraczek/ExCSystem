@@ -1,0 +1,1 @@
+I:\Work\UWCC\minio.exe server I:\Work\UWCC\UWCCSystem

@@ -107,8 +107,5 @@ class Migration(migrations.Migration):
             model_name='member',
             name='group',
             field=models.CharField(default='Unset', max_length=30),
-        ),
-        migrations.RunPython(
-            fix_all_group_names
         )
     ]

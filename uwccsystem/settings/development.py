@@ -13,8 +13,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
 
 DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
 STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
-MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY")
-MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY")
+MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", 'minioadmin')
+MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", 'minioadmin')
 MINIO_STORAGE_ENDPOINT = os.environ.get("MINIO_STORAGE_ENDPOINT", "localhost:9000")
 MINIO_STORAGE_USE_HTTPS = False
 MINIO_STORAGE_MEDIA_BUCKET_NAME = "media"
@@ -39,9 +39,12 @@ DATABASES = {
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1024
 EMAIL_USE_TLS = False
+EMAIL_API_KEY = "placeholder"
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+
 MEMBERSHIP_EMAIL_NAME = "UWCC Membership"
-MEMBERSHIP_EMAIL_HOST_USER = "membership@UWCCDev.org"
-MEMBERSHIP_EMAIL_HOST_PASSWORD = ""
+MEMBERSHIP_EMAIL = f'membership@climgingclubdev.org'
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Base address of where the page is available
