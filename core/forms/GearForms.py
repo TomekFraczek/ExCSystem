@@ -57,17 +57,15 @@ class GearAddForm(ModelForm):
 
     class Meta:
         model = Gear
-        fields = "__all__"
+        fields = ["rfid", "geartype"]
 
     authorizer_rfid = None
     # TODO: Get all images as objects from S3
-    existing_images = AlreadyUploadedImage.objects.filter(image_type="gear")
+    # existing_images = AlreadyUploadedImage.objects.filter(image_type="gear")
 
     def __init__(self, *args, **kwargs):
         super(GearAddForm, self).__init__(*args, **kwargs)
         # Don't disable geartype, this is the only time it should be editable
-        # Set the default status to be in stock
-        self.fields["status"].initial = 0
 
     def build_gear_data(self):
         """During the initial creation of the gear, the gear data JSON must be created."""
@@ -96,7 +94,6 @@ class GearAddForm(ModelForm):
             self.authorizer_rfid,
             self.cleaned_data["rfid"],
             self.cleaned_data["geartype"],
-            self.cleaned_data["image"],
             **self.build_gear_data(),
         )
         return gear
