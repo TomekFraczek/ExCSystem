@@ -1,10 +1,72 @@
+import re
 import smtplib
 import sib_api_v3_sdk
 from uwccsystem import settings
+from django.core.mail.backends.base import BaseEmailBackend
 from sib_api_v3_sdk.rest import ApiException
 
-configuration = sib_api_v3_sdk.Configuration()
-configuration.api_key['api-key'] = settings.EMAIL_API_KEY
+
+class SendInBlueBackend(BaseEmailBackend):
+
+    def __init__(self, **kwargs):
+        self.api_instance = None
+        super(SendInBlueBackend, self).__init__()
+
+    @staticmethod
+    def parse_email(email_str):
+
+        # Default return
+        name = None
+        email = email_str
+
+        if "<" in email_str:
+
+            matches = re.search('"([\s\w]*)" <([\s\w@.]*)>', email_str)
+            if matches is None:
+                print("regex match failed, returning default")
+
+            else:
+                try:
+                    name = matches.group(1)
+                except IndexError:
+                    print("No Name Found! Returning default")
+
+                try:
+                    email = matches.group(2)
+                except IndexError:
+                    email = email_str
+
+        parsed = {'email': email}
+        if name is not None:
+            parsed['name'] = name
+        return parsed
+
+    def send_messages(self, email_messages):
+        sent = []
+        for email in email_messages:
+            send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                to=email.to,
+                reply_to=self.parse_email(email.from_email),
+                html_content=email.body,
+                subject = email.subject
+            )
+            try:
+                api_response = self.api_instance.send_transac_email(send_smtp_email)
+            except ApiException as e:
+                print("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
+                if not email.fail_silently:
+                    raise e
+            else:
+                sent.append(api_response)
+        return sent
+
+    def open(self):
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = settings.EMAIL_API_KEY
+        self.api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    def close(self):
+        self.api_instance = None
 
 
 def send_email(to_emails, title, body,
@@ -38,14 +100,3 @@ def send_email(to_emails, title, body,
         print("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
         raise e
 
-
-def send_membership_email(to_emails, title, body, receiver_names=None):
-    """Send an email from the club membership email. See send_email for more details"""
-    send_email(
-        to_emails,
-        title,
-        body,
-        receiver_names=receiver_names,
-        from_email=settings.MEMBERSHIP_EMAIL,
-        from_name='UWCC Membership',
-    )
