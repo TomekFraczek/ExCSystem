@@ -1,7 +1,7 @@
 Hi {member_name},
 
-Your membership is expiring soon! On {expiration_date} your door tag will stop working and you will stop receiving trip
-emails.
+Your membership is expiring soon! On {expiration_date} you will no longer be a member, and you will not be allowed to
+come on trips or checkout gear until your membership is reactivated!
 
 If you would like to renew your membership, please come to one of our meetings or to office hours. You will need to fill
 out the forms again, but will get a 25% discount on your membership fees. That means a year membership will be only $30
