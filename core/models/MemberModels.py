@@ -243,22 +243,20 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     def send_email(self, title, body, from_email):
         """Sends an email to the member"""
-        emailing.send_email(
-            [self.email],
-            title,
-            body,
-            from_email=from_email,
-            from_name='Excursion Club',
-            receiver_names=[self.get_full_name()]
+        send_mail(
+            recipient_list=[self.email],
+            subject=title,
+            message=body,
+            from_email=f'"Climbing Club at UW" <{from_email}>',
         )
 
     def send_membership_email(self, title, body):
         """Send an email to the member from the membership email"""
-        emailing.send_membership_email(
-            [self.email],
-            title,
-            body,
-            receiver_names=[self.get_full_name()]
+        send_mail(
+            recipient_list=[self.email],
+            subject=title,
+            message=body,
+            from_email=f'"{settings.MEMBERSHIP_EMAIL_NAME}" <{settings.MEMBERSHIP_EMAIL}>'
         )
 
     def send_intro_email(self, finish_signup_url):

@@ -37,6 +37,13 @@ class AlreadyUploadedImage(models.Model):
     def url(self):
         return self.picture.url
 
+    @classmethod
+    def default_img(cls):
+        try:
+            return cls.objects.get(picture=DEFAULT_IMG).pk
+        except:
+            return 1
+
     def __str__(self):
         return self.name
 

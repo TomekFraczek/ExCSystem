@@ -1,7 +1,7 @@
 import os
 
-env_config = os.environ.get("ENV_CONFIG")
-print(env_config)
+env_config = os.environ.get("ENV_CONFIG", "development")
+print(f'Current env: {env_config}')
 
 if env_config == "development":
     from .development import *

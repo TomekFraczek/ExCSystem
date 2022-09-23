@@ -25,7 +25,12 @@ class GearAdmin(ViewableModelAdmin):
         "checked_out_to__first_name",
         "checked_out_to__last_name",
     )
-
+    add_fieldsets = (
+        (
+            None,
+            {"classes": ("wide",), "fields": ("rfid", "geartype")},
+        ),
+    )
     fieldsets = [
         ("Gear Info", {"classes": ("wide",), "fields": ("rfid", "geartype", "image")}),
         (
@@ -49,6 +54,8 @@ class GearAdmin(ViewableModelAdmin):
             fieldsets = fieldsets + [
                 obj.get_extra_fieldset()
             ]  # Using append gives multiple copies of the extra fields
+        else:
+            fieldsets = self.add_fieldsets
 
         return tuple(fieldsets)
 

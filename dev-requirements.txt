@@ -1,0 +1,5 @@
+black
+django-minio-storage
+mypy
+coverage
+pre-commit

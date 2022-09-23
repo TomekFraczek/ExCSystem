@@ -20,7 +20,7 @@ from datetime import date
 from .CertificationModels import Certification
 from .DepartmentModels import Department
 from .MemberModels import Member
-from uwccsystem.settings import GEAR_EXPIRE_TIME
+from uwccsystem.settings import GEAR_EXPIRE_TIME, DEFAULT_IMG
 
 class CustomDataField(models.Model):
     data_types = (
@@ -208,7 +208,7 @@ class GearType(models.Model):
 
 
 class GearManager(models.Manager):
-    def _create(self, rfid, geartype, image, **gear_data):
+    def _create(self, rfid, geartype, **gear_data):
         """
         Create a piece of gear that contains the basic data, and all additional data specified by the geartype
 
@@ -216,7 +216,7 @@ class GearManager(models.Manager):
         """
 
         # Create a simple piece of gear without any extra gear data
-        gear = Gear(rfid=rfid, status=0, geartype=geartype, image=image)
+        gear = Gear(rfid=rfid, status=0, geartype=geartype)
 
         # Filter out any passed data that is not referenced by the gear type
         extra_fields = CustomDataField.objects.filter(geartype=geartype)
@@ -252,7 +252,10 @@ class Gear(models.Model):
 
     primary_key = PrimaryKeyField()
     rfid = models.CharField(max_length=10, unique=True)
-    image = models.ForeignKey(AlreadyUploadedImage, on_delete=models.CASCADE)
+    image = models.ForeignKey(
+        AlreadyUploadedImage,
+        default=AlreadyUploadedImage.default_img(),
+        on_delete=models.CASCADE)
     status_choices = [
         (0, "In Stock"),  # Ready and available in the gear sheds, waiting to be used
         (
