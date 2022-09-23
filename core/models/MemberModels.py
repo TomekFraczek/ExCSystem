@@ -284,9 +284,9 @@ class Member(AbstractBaseUser, PermissionsMixin):
         """Send an email to member that they have gear to return"""
         gear_rows = []
         for gear in all_gear:
-            gear_rows.append(f"{gear.name} - DUE: {gear.due_date.strftime('%a, %b %d, %Y')}")
+            gear_rows.append(f"{gear.name}  DUE: {gear.due_date.strftime('%a, %b %d, %Y')} ")
         template = get_email_template('missing_gear')
-        body = template.format(first_name=self.first_name, gear_rows="".join(gear_rows))
+        body = template.format(first_name=self.first_name, gear_rows="   |&|   ".join(gear_rows))
         title = 'Gear Overdue'
         self.send_email(
             title,
