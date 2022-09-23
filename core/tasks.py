@@ -15,6 +15,11 @@ def test_task():
     print("Tested a task")
 
 
+def test_email():
+    tomek = Member.objects.get(email='tomekmfraczek95@gmail.com')
+    tomek.send_expires_soon_email()
+
+
 def update_listserv():
     from helper_scripts import listserv_interface
 
@@ -78,6 +83,8 @@ if __name__ == "__main__":
     task_name = argv[1].lower()
     if task_name == "test":
         test_task()
+    elif task_name == "email_test":
+        test_email()
     elif task_name == "update_listserv":
         update_listserv()
     elif task_name == "expire_members":
