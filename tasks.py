@@ -1,6 +1,6 @@
 import sys
 from helper_scripts import setup_django
-from core.tasks import expire_members, update_listserv, expire_gear, email_overdue_gear
+from core.tasks import expire_members, update_listserv, expire_gear, email_overdue_gear, test_email
 from helper_scripts.build_permissions import build_all as build_all_perms
 from helper_scripts.listserv_interface import get_email_file
 from helper_scripts.fix_member_group import fix_all_group_names
@@ -24,6 +24,7 @@ tasks = {
     "populate_database": populate_database,
     "reset_database": reset_database,
     "fix_group": fix_all_group_names,
+    "email_test": test_email
 }
 
 
