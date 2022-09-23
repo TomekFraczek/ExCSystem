@@ -4,7 +4,7 @@ import os
 from random import choice, randint
 from typing import Any, List, Optional
 
-from helper_scripts import build_basic_data
+from helper_scripts.build_basic_data import build_all, pick_random
 import kiosk.CheckoutLogic as logic
 import names
 import progressbar
@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.utils.timezone import timedelta
 
-build_basic_data.build_all()
+build_all()
 
 ADMIN_RFID = "0000000000"
 SYSTEM_RFID = "1111111111"
@@ -68,11 +68,6 @@ def gen_duration() -> List[timedelta]:
     """Randomly pick a duration of either 90 or 365 days"""
     durations = [timedelta(days=90), timedelta(days=365)]
     return choice(durations)
-
-
-def pick_random(element_list: List[Any]) -> Any:
-    """Picks and returns a random element from the provided list"""
-    return choice(element_list)
 
 
 def generate_member() -> Member:

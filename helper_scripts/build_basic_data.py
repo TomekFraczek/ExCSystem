@@ -2,7 +2,9 @@
 from helper_scripts import setup_django
 
 import os
-import random
+
+from random import choice, randint
+from typing import Any, List, Optional
 
 from core.models.CertificationModels import Certification
 from core.models.DepartmentModels import Department
@@ -12,6 +14,11 @@ from django.contrib.sites.models import Site
 from django.db.utils import IntegrityError
 
 from uwccsystem import settings
+
+
+def pick_random(element_list: List[Any]) -> Any:
+    """Picks and returns a random element from the provided list"""
+    return choice(element_list)
 
 
 def build_all():
@@ -36,10 +43,16 @@ def build_images():
     print("Uploading gear images...")
 
     sub_types = ["Fake SubType", "SubType I made up", "More Type", "Something"]
+    image_src = os.path.join('media', 'source_images')
+    images = [os.path.join(image_src, f) for f in os.listdir(image_src)]
 
     # Build the default common shaka image
     try:
-        img = AlreadyUploadedImage.objects.create(image_type="gear", picture=settings.DEFAULT_IMG)
+        img = AlreadyUploadedImage.objects.create(
+            image_type="gear",
+            sub_type=pick_random(sub_types),
+            picture=pick_random(images)
+        )
         img.save()
     except IntegrityError:
         print(f'Shaka Image already exists')

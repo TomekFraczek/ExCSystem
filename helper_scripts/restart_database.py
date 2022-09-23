@@ -17,10 +17,10 @@ basepath = os.getcwd()
 # Prepares python to be able to run django commands
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "uwccsystem.settings.development")
 django.setup()
-try:
-    os.remove(os.path.join(basepath, "db.sqlite3"))
-except FileNotFoundError:
-    print("The database does not exist. Moving on...")
+# try:
+#     os.remove(os.path.join(basepath, "db.sqlite3"))
+# except FileNotFoundError:
+#     print("The database does not exist. Moving on...")
 
 
 # Re-creates __init__.py in the migrations folder
